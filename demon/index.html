@@ -1,0 +1,351 @@
+﻿<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>Electron demon</title>
+    <script src="webgl-utils.js"></script>
+    <script type="text/javascript" src="AgoraRender2.js"></script>
+    <script src="helper.js"></script>
+    <script>
+        var L = {
+            VideoProfiles: {
+                Profile120P: '120P',
+                Profile120P_3: '120P_3'
+
+                //, Profile96P: '96P'
+                //, Profile48P: '48P'
+
+                ,
+                Profile180P: '180P',
+                Profile180P_3: '180P_3',
+                Profile180P_4: '180P_4'
+
+                ,
+                Profile240P: '240P',
+                Profile240P_3: '240P_3',
+                Profile240P_4: '240P_4'
+
+                ,
+                Profile360P: '360P',
+                Profile360P_3: '360P_3',
+                Profile360P_4: '360P_4',
+                Profile360P_6: '360P_6',
+                Profile360P_7: '360P_7',
+                Profile360P_8: '360P_8',
+                Profile360P_9: '360P_9',
+                Profile360P_10: '360P_10',
+                Profile360P_11: '360P_11'
+
+                ,
+                Profile480P: '480P',
+                Profile480P_3: '480P_3',
+                Profile480P_4: '480P_4',
+                Profile480P_6: '480P_6',
+                Profile480P_8: '480P_8',
+                Profile480P_9: '480P_9',
+                Profile480P_10: '480P_10'
+
+                ,
+                Profile720P: '720P',
+                Profile720P_3: '720P_3',
+                Profile720P_5: '720P_5',
+                Profile720P_6: '720P_6'
+            },
+
+            ErrorCode: {
+                NO_ERROR: 0,
+                FAILED: 1,
+                INVALID_ARGUMENT: 2,
+                NOT_READY: 3,
+                NOT_SUPPORTED: 4,
+                REFUSED: 5,
+                BUFFER_TOO_SMALL: 6,
+                NOT_INITIALIZED: 7,
+                INVALID_VIEW: 8,
+                NO_PERMISSION: 9,
+                TIMEDOUT: 10,
+                CANCELED: 11,
+                TOO_OFTEN: 12,
+                BIND_SOCKET: 13,
+                NET_DOWN: 14,
+                NET_NOBUFS: 15,
+                INIT_VIDEO: 16,
+                JOIN_CHANNEL_REJECTED: 17,
+                LEAVE_CHANNEL_REJECTED: 18,
+                ALREADY_IN_USE: 19,
+                INVALID_APP_ID: 101,
+                INVALID_CHANNEL_NAME: 102,
+                CHANNEL_KEY_EXPIRED: 109,
+                INVALID_CHANNEL_KEY: 110,
+                CONNECTION_INTERRUPTED: 111,
+                CONNECTION_LOST: 112
+                //1001~2000
+                ,
+                LOAD_MEDIA_ENGINE: 1001,
+                START_CALL: 1002,
+                START_CAMERA: 1003,
+                START_VIDEO_RENDER: 1004,
+                ADM_GENERAL_ERROR: 1005,
+                ADM_JAVA_RESOURCE: 1006,
+                ADM_SAMPLE_RATE: 1007,
+                ADM_INIT_PLAYOUT: 1008,
+                ADM_START_PLAYOUT: 1009,
+                ADM_STOP_PLAYOUT: 1010,
+                ADM_INIT_RECORDING: 1011,
+                ADM_START_RECORDING: 1012,
+                ADM_STOP_RECORDING: 1013,
+                ADM_RUNTIME_PLAYOUT_ERROR: 1015,
+                ADM_RUNTIME_RECORDING_ERROR: 1017,
+                ADM_RECORD_AUDIO_FAILED: 1018,
+                ADM_INIT_LOOPBACK: 1022,
+                ADM_START_LOOPBACK: 1023
+                // 1025, as warning for interruption of adm on ios
+                // 1026, as warning for route change of adm on ios
+
+                // VDM error code starts from 1500
+                ,
+                VDM_CAMERA_NOT_AUTHORIZED: 1501
+            }
+        };
+        function initPage() {
+            var innerHtml = "";
+            for (var profile in L.VideoProfiles) {
+                var v = L.VideoProfiles[profile];
+                innerHtml += "<option value='" + v + "'>" + v + "</option>";
+            }
+
+            var profileElement = document.getElementById("profile");
+            profileElement.innerHTML = innerHtml;
+        }
+    </script>
+</head>
+<body stype="margsin: 1px" onload="initPage()">
+    <center>
+   <div id="div_device" class="panel panel-default">
+       <div class="select">
+           <label for="audioSource">Audio source:</label>
+           <select id="audioSource"></select>
+       </div>
+       <div class="select">
+           <label for="videoSource">Video source:</label>
+           <select id="videoSource"></select>
+       </div>
+   </div>
+   <div>
+     <button onclick="getMediaDevices()">Load Media Devices</button>
+   </div>
+    <div id="div_join" class="panel panel-default">
+        <div class="panel-body">
+            Key: <input id="key" type="text" value="test" size="36"/>
+            Channel: <input id="channel" type="text" value="ElectronDemon" size="20"/>
+            UID: <input id="uid" type="text" value="" size="4"/>
+            Video: <input id="video" type="checkbox" checked/>
+            <br/>
+            <button id="join" class="btn btn-primary" onclick="join()">Join</button>
+            <button id="leave" class="btn btn-primary" onclick="leave()" disabled>Leave</button>
+            <button id="publish" class="btn btn-primary" onclick="publish()" disabled>Publish</button>
+            <button id="unpublish" class="btn btn-primary" onclick="unpublish()" disabled>Unpublish</button>
+            <button id="startRecording" class="btn btn-primary" onclick="startRecording()" disabled>Start Recording</button>
+            <button id="stopRecording" class="btn  btn-primary" onclick="stopRecording()" disabled>Stop Recording</button>
+            <button id="renewDynamicKey" class="btn btn-primary" onclick="renewDynamicKey()" disabled>Renew Dynamic Key</button>
+        </div>
+        <div id="recording Status">
+            Recording Status.......
+         </div>
+    </div>
+
+    <div>
+        <h4 style="text-shadow: 2px 1px 4px blue">
+            Double click on local video to resize it.
+        </h4>
+    </div>
+
+    <div>
+        <button onclick="enableLocalAudio()" id="btn_localAudio">Disable Audio</button>
+        <button onclick="enableLocalVideo()" id="btn_localVideo">Disable Video</button>
+        <button onclick="enableLocalPlay()" id="btn_localPlay">Stop</button>
+        Profile:
+        <select onchange="onProfileSelected()" id="profile"></select>
+    </div>
+
+    <div id="agora_local" style="width:640px;height:320px;display:flex;justify-content:center;align-items:center;background-color:yellow" ondblclick="changeLocalSize()"></div>
+    <div>
+        <h4 style="text-shadow: 2px 1px 4px blue">
+            Double click on remote video to unsubscribe it.
+        </h4>
+    </div>
+    <div id="agora_remote" style="display:flex;justify-content:center;align-items:center;background-color:yellow;width:0;height:320px">
+
+    </div>
+<div id="error_show">
+
+</div>
+    <script language="javascript">
+        var client, localStream, camera, microphone;
+        var audioInputDevices = {};
+        var audioOutputDevices = {};
+        var videoInputDevices = {};
+
+        var audioSelect = document.querySelector("select#audioSource");
+        var videoSelect = document.querySelector("select#videoSource");
+        var localRender = null;
+        loadSdk();
+        console.log("Loaded SDK");
+        rtcengine.on("error", function (err, msg) {
+            console.log("error from SDK : " + err);
+            var e = document.getElementById("error_show");
+            e.innerHTML = "<span style='color:red'>Agora SDK Error : " + err;
+        });
+        rtcengine.on("firstlocalvideoframe", function (width, height, elapsed) {
+            console.log("init local render");
+        });
+        rtcengine.on("joinedchannel", function (channel, uid, elapsed) {
+            console.log("User " + uid + " join channel suceessfully.");
+            document.getElementById("leave").disabled = false;
+            rtcengine.setVideoProfile(55, false);
+            //if (document.getElementById("video").checked) {
+
+            //}
+        });
+        var remoteWidth = 0;
+        var rmeoteHeight = 350
+        var remoteStreams = {};
+        rtcengine.on("addstream", function (uid, elapsed) {
+            var viewId = "agora_remote" + uid;
+            var inner = '<div id="' + viewId + '" style="width:640px;height:320px" ondblclick="unsubscribe(' + uid + ')"></div>';
+            inner += '<div><center>';
+            inner += '<button onclick="toggleRemoteAudio(' + uid + ')" id="remoteAudioButton' + uid + '">Disable Audio</button>';
+            inner += '<button onclick="toggleRemoteVideo(' + uid + ')" id="remoteVideoButton' + uid + '">Disable Video</button>';
+            inner += '</center></div>';
+            //$('div#agora_remote').append(inner);
+            var parent = document.getElementById("agora_remote");
+            remoteWidth += 640
+            parent.style.width = remoteWidth + "px";
+            parent.style.height = rmeoteHeight + "px";
+            var child = document.createElement("div");
+            child.id = viewId + "parent";
+            child.innerHTML = inner;
+            parent.appendChild(child);
+            video = document.getElementById(viewId);
+            rtcengine.subscribe(uid, video);
+            remoteStreams[uid] = {};
+            remoteStreams[uid].audioEnable = true;
+            remoteStreams[uid].videoEnable = true;
+        });
+
+        rtcengine.on("removestream", function (uid, reason) {
+            var e = document.getElementById('agora_remote' + uid + "parent");
+            if (e) {
+                e.parentElement.removeChild(e);
+                remoteWidth -= 640;
+                var parent = document.getElementById("agora_remote");
+                parent.style.width = remoteWidth + "px";
+                remoteStreams[uid] = undefined;
+            }
+        });
+       function getMediaDevices(){
+            var videoDevices = rtcengine.getVideoDevices();
+            console.log('get video devices');
+
+            for (var i = 0; i < videoDevices.length; ++i) {
+                var device = videoDevices[i];
+                var option = document.createElement("option");
+                option.value = device.deviceid;
+                option.text = device.devicename;
+                videoSelect.appendChild(option);
+                videoInputDevices[device.deviceid] = device;
+            }
+
+            var audioRecordingDevices = rtcengine.getAudioRecordingDevices();
+            console.log('get audio recording devices.');
+            for (var i = 0; i < audioRecordingDevices.length; ++i) {
+                var device = audioRecordingDevices[i];
+                var option = document.createElement("option");
+                option.value = device.deviceid;
+                option.text = device.devicename;
+                audioSelect.appendChild(option);
+                audioInputDevices[device.deviceid] = device;
+            }
+        }
+        local = document.getElementById("agora_local");
+        rtcengine.setupLocalVideo(local);
+        console.log('setupLocalVideo');
+        var localAudioEnabled = true;
+        var localVideoEnabled = true;
+        var localPlay = true;
+
+        function enableLocalAudio() {
+            rtcengine.muteLocalAudioStream(localAudioEnabled);
+            localAudioEnabled = !localAudioEnabled;
+
+            document.getElementById("btn_localAudio").innerText = localAudioEnabled ?
+                "Disable Audio" : "Enable Audio";
+        }
+
+        function enableLocalVideo() {
+            console.log("LocalVideoEnabled : " + localVideoEnabled)
+            rtcengine.muteLocalVideoStream(localVideoEnabled);
+            localVideoEnabled = !localVideoEnabled;
+            document.getElementById("btn_localVideo").innerText = localVideoEnabled ?
+                "Disable Video" : "Enable Video";
+        }
+
+        function enableLocalPlay() {
+            localPlay = !localPlay;
+        }
+
+        function toggleRemoteAudio(uid) {
+            if (remoteStreams[uid]) {
+                rtcengine.muteRemoteAudioStream(uid, remoteStreams[uid].audioEnable);
+                remoteStreams[uid].audioEnable = !remoteStreams[uid].audioEnable;
+                document.getElementById("remoteAudioButton" + uid).innerText = remoteStreams[uid].audioEnable ?
+                    "Disable Audio" : "Enable Audio";
+            }
+        }
+
+        function toggleRemoteVideo(uid) {
+            if (remoteStreams[uid]) {
+                rtcengine.muteRemoteVideoStream(uid, remoteStreams[uid].videoEnable);
+                remoteStreams[uid].videoEnable = !remoteStreams[uid].videoEnable;
+                document.getElementById("remoteVideoButton" + uid).innerText = remoteStreams[uid].videoEnable ?
+                    "Disable Video" : "Enable Video";
+            }
+        }
+
+        function leave() {
+            document.getElementById("leave").disabled = true;
+            rtcengine.leaveChannel();
+        }
+
+        rtcengine.on("leavechannel", function () {
+                document.getElementById("join").disabled = false;
+                document.getElementById("video").disabled = false;
+                document.getElementById("publish").disabled = false;
+                document.getElementById("agora_remote").style.width = "0px";
+                document.getElementById("agora_remote").innerHTML = "";
+                remoteWidth = 0;
+                remoteStreams = {};
+            });
+        function join() {
+            document.getElementById("join").disabled = true;
+            document.getElementById("video").disabled = true;
+            keyV = document.getElementById("key").value;
+            channelv = document.getElementById("channel").value;
+            uidv = document.getElementById("uid").value;
+            if (document.getElementById("video").checked) {
+                rtcengine.enableLocalVideo(true);
+                }
+            console.log("Join channel " + channelv);
+            rtcengine.joinChannel(null, channelv, 0, 0);
+        }
+            rtcengine.on("joinedchannel", function (channel, uid, elapsed) {
+                document.getElementById("leave").disabled = false;
+                if (document.getElementById("video").checked) {
+                    //rtcengine.setVideoProfile(document.getElementById("profile").value, false);
+                }
+            });
+    </script>
+    </center>
+</body>
+</html>

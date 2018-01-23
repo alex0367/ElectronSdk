@@ -1,0 +1,1 @@
+node-gyp rebuild --target=1.7.9 --arch=ia32 --debug --msvs_version=2013
